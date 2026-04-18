@@ -41,7 +41,7 @@
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
         const Lucide = window.LucideReact || {};
-        const { BadgeDollarSign, Unlock, Lock, Coins, Gem, Settings2, ShieldCheck, TrendingUp, X } = Lucide;
+        const { BadgeDollarSign, Unlock, Lock, Settings2, ShieldCheck, TrendingUp, X } = Lucide;
 
         const BRAND = { MAJOR: '#1E0E0A', SECONDARY: '#D5B98E', AUXILIARY: '#EDEDED' };
 
@@ -107,14 +107,29 @@
                 const w = Number(width) || 0;
                 const t = Number(thickness) || 0;
                 const diff = (Number(targetSize) || 0) - (Number(currentSize) || 0);
+                
+                // 材質對應的 Buffer
+                const bufferRate = material === 'platinum' ? 1.20 : 1.15;
+                
                 let baseD = 0.01;
                 if (w >= 4.0) baseD = 0.019; else if (w >= 3.0) baseD = 0.014; else if (w >= 2.0) baseD = 0.01;
+                
                 let weight = (diff / 0.5) * baseD * (t / 1.5) * (material === 'platinum' ? 1.3 : 1.0);
                 if (weight < 0) weight = 0;
-                const finalW = weight * (material === 'platinum' ? 1.2 : 1.15);
+                
+                // 套用對應材質的 Buffer
+                const finalW = weight * bufferRate;
                 const cost = Math.round(finalW * p) + Number(laborFee);
                 const quote = Math.round(cost / (1 - targetMargin/100));
-                return { diff: diff.toFixed(1), finalW: finalW.toFixed(4), cost, quote, profit: quote - cost };
+                
+                return { 
+                    diff: diff.toFixed(1), 
+                    finalW: finalW.toFixed(4), 
+                    cost, 
+                    quote, 
+                    profit: quote - cost,
+                    bufferText: material === 'platinum' ? '20%' : '15%'
+                };
             }, [goldPrice, platinumPrice, material, width, thickness, currentSize, targetSize, laborFee, targetMargin]);
 
             return (
@@ -138,7 +153,6 @@
                                 <label className="text-[10px] font-black text-amber-800 block mb-1 uppercase tracking-widest opacity-70">今日公會價格 (TWD/錢)</label>
                                 <div className="flex items-center"><input type="number" value={material === 'gold' ? goldPrice : platinumPrice} onChange={(e) => material === 'gold' ? setGoldPrice(e.target.value) : setPlatinumPrice(e.target.value)} className="w-full text-2xl font-black" style={{ color: BRAND.MAJOR }} /><span className="text-xs font-bold opacity-30">TWD</span></div>
                             </div>
-                            {/* 重新加入：預估工錢成本欄位 */}
                             <div className="bg-[#F8F8F8] p-4 rounded-3xl border border-gray-100 shadow-inner">
                                 <label className="text-[10px] font-black text-gray-500 block mb-1 uppercase tracking-widest opacity-70">預估工錢成本 (TWD)</label>
                                 <div className="flex items-center"><input type="number" value={laborFee} onChange={(e) => setLaborFee(e.target.value)} className="w-full text-xl font-black text-gray-700" /><span className="text-xs font-bold opacity-30">TWD</span></div>
@@ -154,11 +168,17 @@
 
                         {isAdmin && (
                             <div className="p-5 bg-gray-50 rounded-3xl border-l-4 border-amber-400 space-y-3 text-xs shadow-sm animate-in fade-in slide-in-from-top-2">
-                                <div className="flex justify-between items-center border-b border-gray-200 pb-2"><span className="font-black flex items-center gap-1 uppercase tracking-tighter">{Settings2 && <Settings2 size={14} />} 內部利潤分析</span><span className="opacity-50 font-bold">BUFFER 15-20%</span></div>
+                                <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+                                    <span className="font-black flex items-center gap-1 uppercase tracking-tighter">{Settings2 && <Settings2 size={14} />} 內部利潤分析</span>
+                                    <span className="opacity-50 font-bold">耗損緩衝: {calc.bufferText}</span>
+                                </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="flex justify-between"><span>毛利設定 %:</span><input type="number" value={targetMargin} onChange={(e)=>setTargetMargin(e.target.value)} className="w-8 text-right font-black border-b border-gray-300" /></div>
                                     <div className="flex justify-between"><span>預估重量:</span><span className="font-black">{calc.finalW} 錢</span></div>
-                                    <div className="flex justify-between pt-2 border-t border-gray-200 col-span-2 font-black text-sm text-amber-900"><span className="flex items-center gap-1">{ShieldCheck && <ShieldCheck size={14} />} 預計利潤:</span><span>${calc.profit.toLocaleString()}</span></div>
+                                    <div className="flex justify-between pt-2 border-t border-gray-200 col-span-2 font-black text-sm text-amber-900">
+                                        <span className="flex items-center gap-1">{ShieldCheck && <ShieldCheck size={14} />} 預計利潤:</span>
+                                        <span>${calc.profit.toLocaleString()}</span>
+                                    </div>
                                 </div>
                             </div>
                         )}
