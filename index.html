@@ -93,22 +93,42 @@
             const [isAdmin, setIsAdmin] = useState(false);
             const [showLock, setShowLock] = useState(false);
             const [material, setMaterial] = useState('gold');
-            const [goldPrice, setGoldPrice] = useState(18500);
-            const [platinumPrice, setPlatinumPrice] = useState(13500);
+
+            // --- 修改部分：初始化時從 localStorage 讀取紀錄，若無紀錄則使用預設值 ---
+            const [goldPrice, setGoldPrice] = useState(() => {
+                return localStorage.getItem('saved_gold_price') || 18500;
+            });
+            const [platinumPrice, setPlatinumPrice] = useState(() => {
+                return localStorage.getItem('saved_platinum_price') || 13500;
+            });
+            const [targetMargin, setTargetMargin] = useState(() => {
+                return localStorage.getItem('saved_target_margin') || 25;
+            });
+
             const [width, setWidth] = useState('3.0');
             const [thickness, setThickness] = useState('1.5');
             const [currentSize, setCurrentSize] = useState(10);
             const [targetSize, setTargetSize] = useState(11);
             const [laborFee, setLaborFee] = useState(1000);
-            const [targetMargin, setTargetMargin] = useState(25);
+
+            // --- 修改部分：當數值變動時，自動存入 localStorage ---
+            useEffect(() => {
+                localStorage.setItem('saved_gold_price', goldPrice);
+            }, [goldPrice]);
+
+            useEffect(() => {
+                localStorage.setItem('saved_platinum_price', platinumPrice);
+            }, [platinumPrice]);
+
+            useEffect(() => {
+                localStorage.setItem('saved_target_margin', targetMargin);
+            }, [targetMargin]);
 
             const calc = useMemo(() => {
                 const p = material === 'gold' ? Number(goldPrice) : Number(platinumPrice);
                 const w = Number(width) || 0;
                 const t = Number(thickness) || 0;
                 const diff = (Number(targetSize) || 0) - (Number(currentSize) || 0);
-                
-                // 材質對應的 Buffer
                 const bufferRate = material === 'platinum' ? 1.20 : 1.15;
                 
                 let baseD = 0.01;
@@ -117,7 +137,6 @@
                 let weight = (diff / 0.5) * baseD * (t / 1.5) * (material === 'platinum' ? 1.3 : 1.0);
                 if (weight < 0) weight = 0;
                 
-                // 套用對應材質的 Buffer
                 const finalW = weight * bufferRate;
                 const cost = Math.round(finalW * p) + Number(laborFee);
                 const quote = Math.round(cost / (1 - targetMargin/100));
@@ -137,7 +156,7 @@
                     {showLock && <PatternLock onVerify={() => {setIsAdmin(true); setShowLock(false);}} onClose={() => setShowLock(false)} />}
                     <div className="safe-top shadow-2xl z-20" style={{ backgroundColor: BRAND.MAJOR }}>
                         <div className="px-6 py-5 flex justify-between items-center text-white">
-                            <div className="flex items-center gap-3 font-bold tracking-[0.2em]">{BadgeDollarSign && <BadgeDollarSign size={22} style={{ color: BRAND.SECONDARY }} />}<span className="text-lg">戒指改圍報價</span></div>
+                            <div className="flex items-center gap-3 font-bold tracking-[0.2em]">{BadgeDollarSign && <BadgeDollarSign size={22} style={{ color: BRAND.SECONDARY }} />}<span className="text-lg text-white">戒指改圍報價</span></div>
                             <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLock(true)} className="p-2.5 rounded-full bg-white/10 active:scale-90 transition-transform">{isAdmin ? (Unlock ? <Unlock size={20} /> : '🔓') : (Lock ? <Lock size={20} /> : '🔒')}</button>
                         </div>
                     </div>
@@ -151,28 +170,36 @@
                         <div className="grid grid-cols-1 gap-4">
                             <div className="bg-[#EDEDED] p-4 rounded-3xl border border-gray-200 shadow-sm">
                                 <label className="text-[10px] font-black text-amber-800 block mb-1 uppercase tracking-widest opacity-70">今日公會價格 (TWD/錢)</label>
-                                <div className="flex items-center"><input type="number" value={material === 'gold' ? goldPrice : platinumPrice} onChange={(e) => material === 'gold' ? setGoldPrice(e.target.value) : setPlatinumPrice(e.target.value)} className="w-full text-2xl font-black" style={{ color: BRAND.MAJOR }} /><span className="text-xs font-bold opacity-30">TWD</span></div>
+                                <div className="flex items-center">
+                                    <input type="number" value={material === 'gold' ? goldPrice : platinumPrice} 
+                                        onChange={(e) => material === 'gold' ? setGoldPrice(e.target.value) : setPlatinumPrice(e.target.value)} 
+                                        className="w-full text-2xl font-black" style={{ color: BRAND.MAJOR }} />
+                                    <span className="text-xs font-bold opacity-30 text-black">TWD</span>
+                                </div>
                             </div>
                             <div className="bg-[#F8F8F8] p-4 rounded-3xl border border-gray-100 shadow-inner">
                                 <label className="text-[10px] font-black text-gray-500 block mb-1 uppercase tracking-widest opacity-70">預估工錢成本 (TWD)</label>
-                                <div className="flex items-center"><input type="number" value={laborFee} onChange={(e) => setLaborFee(e.target.value)} className="w-full text-xl font-black text-gray-700" /><span className="text-xs font-bold opacity-30">TWD</span></div>
+                                <div className="flex items-center">
+                                    <input type="number" value={laborFee} onChange={(e) => setLaborFee(e.target.value)} className="w-full text-xl font-black text-gray-700" />
+                                    <span className="text-xs font-bold opacity-30 text-black">TWD</span>
+                                </div>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-x-6 gap-y-6 pt-2">
-                            <div className="border-b-2 border-gray-100 p-1 focus-within:border-[#D5B98E] transition-colors"><label className="text-[10px] opacity-40 block font-black uppercase">寬度 (mm)</label><input type="number" value={width} onChange={(e)=>setWidth(e.target.value)} className="w-full font-bold text-lg" /></div>
-                            <div className="border-b-2 border-gray-100 p-1 focus-within:border-[#D5B98E] transition-colors"><label className="text-[10px] opacity-40 block font-black uppercase">厚度 (mm)</label><input type="number" value={thickness} onChange={(e)=>setThickness(e.target.value)} className="w-full font-bold text-lg" /></div>
-                            <div className="border-b-2 border-gray-100 p-1"><label className="text-[10px] opacity-40 block font-black uppercase">原手圍 (號)</label><input type="number" value={currentSize} onChange={(e)=>setCurrentSize(e.target.value)} className="w-full text-lg font-medium" /></div>
+                            <div className="border-b-2 border-gray-100 p-1 focus-within:border-[#D5B98E] transition-colors"><label className="text-[10px] opacity-40 block font-black uppercase">寬度 (mm)</label><input type="number" value={width} onChange={(e)=>setWidth(e.target.value)} className="w-full font-bold text-lg text-black" /></div>
+                            <div className="border-b-2 border-gray-100 p-1 focus-within:border-[#D5B98E] transition-colors"><label className="text-[10px] opacity-40 block font-black uppercase">厚度 (mm)</label><input type="number" value={thickness} onChange={(e)=>setThickness(e.target.value)} className="w-full font-bold text-lg text-black" /></div>
+                            <div className="border-b-2 border-gray-100 p-1"><label className="text-[10px] opacity-40 block font-black uppercase">原手圍 (號)</label><input type="number" value={currentSize} onChange={(e)=>setCurrentSize(e.target.value)} className="w-full text-lg font-medium text-black" /></div>
                             <div className="border-b-2 border-amber-200 p-1"><label className="text-[10px] text-amber-600 block font-black uppercase">目標手圍 (號)</label><input type="number" value={targetSize} onChange={(e)=>setTargetSize(e.target.value)} className="w-full font-black text-2xl text-amber-700" /></div>
                         </div>
 
                         {isAdmin && (
-                            <div className="p-5 bg-gray-50 rounded-3xl border-l-4 border-amber-400 space-y-3 text-xs shadow-sm animate-in fade-in slide-in-from-top-2">
+                            <div className="p-5 bg-gray-50 rounded-3xl border-l-4 border-amber-400 space-y-3 text-xs shadow-sm animate-in fade-in">
                                 <div className="flex justify-between items-center border-b border-gray-200 pb-2">
-                                    <span className="font-black flex items-center gap-1 uppercase tracking-tighter">{Settings2 && <Settings2 size={14} />} 內部利潤分析</span>
-                                    <span className="opacity-50 font-bold">耗損緩衝: {calc.bufferText}</span>
+                                    <span className="font-black flex items-center gap-1 uppercase tracking-tighter text-black">{Settings2 && <Settings2 size={14} />} 內部利潤分析</span>
+                                    <span className="opacity-50 font-bold text-black">耗損緩衝: {calc.bufferText}</span>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-4 text-black">
                                     <div className="flex justify-between"><span>毛利設定 %:</span><input type="number" value={targetMargin} onChange={(e)=>setTargetMargin(e.target.value)} className="w-8 text-right font-black border-b border-gray-300" /></div>
                                     <div className="flex justify-between"><span>預估重量:</span><span className="font-black">{calc.finalW} 錢</span></div>
                                     <div className="flex justify-between pt-2 border-t border-gray-200 col-span-2 font-black text-sm text-amber-900">
