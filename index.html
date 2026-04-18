@@ -23,42 +23,102 @@
             -webkit-touch-callout: none;
             user-select: none;
             background-color: #1E0E0A;
-            margin: 0; padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             overflow: hidden; 
         }
+
+        /* 3. iOS 安全區域補償 */
         .safe-top { padding-top: env(safe-area-inset-top); }
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-        #root { height: 100vh; display: flex; flex-direction: column; }
-        .scroll-content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-        .loading-screen { display: flex; justify-content: center; align-items: center; height: 100vh; color: #D5B98E; font-weight: bold; background-color: #1E0E0A; }
-        input[type="number"] { -moz-appearance: textfield; border: none; background: transparent; outline: none; }
-        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        #root {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        input[type="number"] { -moz-appearance: textfield; }
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        
+        .loading-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #D5B98E;
+            font-weight: bold;
+            background-color: #1E0E0A;
+        }
+
+        .scroll-content {
+            flex: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
     </style>
 </head>
 <body>
-    <div id="root"><div class="loading-screen">系統載入中...</div></div>
+    <div id="root">
+        <div class="loading-screen">系統載入中...</div>
+    </div>
 
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
+        
+        // 修正 Lucide 圖標獲取
         const Lucide = window.LucideReact || {};
-        const { BadgeDollarSign, Unlock, Lock, Coins, Gem, RefreshCw, Loader2, Settings2, ShieldCheck, TrendingUp, X } = Lucide;
+        const { 
+            BadgeDollarSign, Unlock, Lock, Coins, Gem, 
+            RefreshCw, Loader2, Settings2, ShieldCheck, 
+            TrendingUp, Calculator, X, Ruler, Layers 
+        } = Lucide;
 
-        const BRAND = { MAJOR: '#1E0E0A', SECONDARY: '#D5B98E', AUXILIARY: '#EDEDED' };
+        const BRAND = {
+            MAJOR: '#1E0E0A',
+            SECONDARY: '#D5B98E',
+            AUXILIARY: '#EDEDED'
+        };
+
+        // 請填入您的 API Key
         const apiKey = "AIzaSyB666C4GJRVXPc28-xORTRJhbLwyD10tlg";
 
+        // --- 原始圖形解鎖組件 ---
         const PatternLock = ({ onVerify, onClose }) => {
             const [nodes, setNodes] = useState([]);
             const [isDrawing, setIsDrawing] = useState(false);
             const [error, setError] = useState(false);
             const CORRECT_PATTERN = [0, 1, 2, 4, 6, 7, 8];
 
+            const handleStart = (index) => {
+                setIsDrawing(true);
+                setNodes([index]);
+                setError(false);
+            };
+
+            const handleEnter = (index) => {
+                if (isDrawing && !nodes.includes(index)) {
+                    setNodes([...nodes, index]);
+                }
+            };
+
             const handleEnd = () => {
                 setIsDrawing(false);
-                if (JSON.stringify(nodes) === JSON.stringify(CORRECT_PATTERN)) { onVerify(); } 
-                else if (nodes.length > 0) { 
-                    setError(true); 
-                    setTimeout(() => { setNodes([]); setError(false); }, 800); 
+                if (JSON.stringify(nodes) === JSON.stringify(CORRECT_PATTERN)) {
+                    onVerify();
+                } else {
+                    if (nodes.length > 0) {
+                        setError(true);
+                        setTimeout(() => {
+                            setNodes([]);
+                            setError(false);
+                        }, 800);
+                    }
                 }
             };
 
@@ -68,27 +128,55 @@
                 const element = document.elementFromPoint(touch.clientX, touch.clientY);
                 if (element && element.dataset.index !== undefined) {
                     const index = parseInt(element.dataset.index);
-                    if (!nodes.includes(index)) setNodes(prev => [...prev, index]);
+                    if (!nodes.includes(index)) {
+                        setNodes(prev => [...prev, index]);
+                    }
                 }
             };
 
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <div className="rounded-2xl w-full max-w-[300px] p-6 shadow-2xl relative border border-white/20" style={{ backgroundColor: BRAND.SECONDARY }}>
-                        <button onClick={onClose} className="absolute right-3 top-3 text-white p-1">{X ? <X size={24} /> : '✕'}</button>
-                        <div className="text-center mb-6 text-white font-bold tracking-widest uppercase"><h3 className="text-base">管理員驗證</h3><p className="text-xs opacity-80 mt-1 font-normal">請繪製解鎖圖形</p></div>
-                        <div className="relative grid grid-cols-3 gap-6 mx-auto w-fit mb-6 touch-none" onTouchEnd={handleEnd} onTouchMove={handleTouchMove}>
-                            <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible">
-                                {nodes.map((node, i) => i === 0 ? null : <line key={i} x1={(nodes[i-1]%3)*64+20} y1={Math.floor(nodes[i-1]/3)*64+20} x2={(node%3)*64+20} y2={Math.floor(node/3)*64+20} stroke={error ? "#ef4444" : "white"} strokeWidth="5" strokeLinecap="round" />)}
-                            </svg>
-                            {[...Array(9)].map((_, i) => <div key={i} data-index={i} onTouchStart={(e) => { e.preventDefault(); setIsDrawing(true); setNodes([i]); }} className={`w-10 h-10 rounded-full border-2 transition-all ${nodes.includes(i) ? (error ? 'bg-red-500 border-red-500' : 'bg-white border-white shadow-lg') : 'bg-white/20 border-white/30'}`} />)}
+                        <button onClick={onClose} className="absolute right-3 top-3 text-white p-1">
+                            {X ? <X size={24} /> : '✕'}
+                        </button>
+                        <div className="text-center mb-6 text-white uppercase tracking-widest font-bold">
+                            <h3 className="text-base">管理員驗證</h3>
+                            <p className="text-xs opacity-80 mt-1 font-normal">請繪製解鎖圖形</p>
                         </div>
+                        <div className="relative grid grid-cols-3 gap-6 mx-auto w-fit mb-6 touch-none"
+                             onMouseUp={handleEnd} onTouchEnd={handleEnd} onTouchMove={handleTouchMove}>
+                            <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible">
+                                {nodes.map((node, i) => {
+                                    if (i === 0) return null;
+                                    const prev = nodes[i - 1];
+                                    const x1 = (prev % 3) * 64 + 20;
+                                    const y1 = Math.floor(prev / 3) * 64 + 20;
+                                    const x2 = (node % 3) * 64 + 20;
+                                    const y2 = Math.floor(node / 3) * 64 + 20;
+                                    return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={error ? "#ef4444" : "white"} strokeWidth="5" strokeLinecap="round" />;
+                                })}
+                            </svg>
+                            {[...Array(9)].map((_, i) => (
+                                <div key={i} data-index={i} 
+                                     onMouseDown={() => handleStart(i)} 
+                                     onMouseEnter={() => handleEnter(i)} 
+                                     onTouchStart={(e) => { e.preventDefault(); handleStart(i); }}
+                                     className={`w-10 h-10 rounded-full border-2 z-10 transition-all ${nodes.includes(i) ? (error ? 'bg-red-500 border-red-500' : 'bg-white border-white shadow-lg') : 'bg-white/20 border-white/30'}`} />
+                            ))}
+                        </div>
+                        {error && <p className="text-red-900 text-center text-sm font-bold animate-pulse">驗證圖形錯誤</p>}
                     </div>
                 </div>
             );
         };
 
         const App = () => {
+            const WIDTH_DATA_MAP = [
+                { w: 2.0, d: 0.01 }, { w: 2.5, d: 0.012 }, { w: 3.0, d: 0.014 },
+                { w: 3.5, d: 0.0167 }, { w: 4.0, d: 0.019 }
+            ];
+
             const [isAdmin, setIsAdmin] = useState(false);
             const [showPatternLock, setShowPatternLock] = useState(false);
             const [material, setMaterial] = useState('gold');
@@ -110,95 +198,181 @@
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            contents: [{ parts: [{ text: "查詢台灣今日最新銀樓公會公告的黃金（賣出）與鉑金（賣出）價格。請回傳 JSON 格式：{ \"gold\": 數字, \"platinum\": 數字 }。單位必須是 TWD/錢。只回傳 JSON，不要有其他文字。" }] }],
+                            contents: [{ parts: [{ text: "查詢台灣今日最新銀樓公會公告的黃金（賣出）與鉑金（賣出）價格。請回傳 JSON 格式：{ \"gold\": 數字, \"platinum\": 數字 }。單位必須是 TWD/錢。" }] }],
                             tools: [{ google_search: {} }],
                             generationConfig: { responseMimeType: "application/json" }
                         })
                     });
                     const result = await response.json();
-                    let text = result.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-                    // 核心修正：移除 Markdown 標籤以防止 JSON 解析失敗
-                    text = text.replace(/```json|```/g, "").trim();
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
                     const data = JSON.parse(text);
                     if (data.gold) setGoldPrice(data.gold);
                     if (data.platinum) setPlatinumPrice(data.platinum);
-                } catch (err) { console.error("價格更新失敗", err); } finally { setIsFetching(false); }
+                } catch (err) {
+                    console.error("無法更新即時價格", err);
+                } finally {
+                    setIsFetching(false);
+                }
             };
 
             useEffect(() => { fetchRealTimePrices(); }, []);
 
-            const calc = useMemo(() => {
+            const calculation = useMemo(() => {
                 const activePrice = material === 'gold' ? Number(goldPrice) : Number(platinumPrice);
-                const w = Number(width) || 0; const t = Number(thickness) || 0;
-                const cS = Number(currentSize) || 0; const tS = Number(targetSize) || 0;
-                const lF = material === 'platinum' ? 1500 : 1000;
-                
-                const diff = Number((tS - cS).toFixed(2));
-                const buffer = material === 'platinum' ? 1.20 : 1.15;
-                
-                let baseD = 0.01;
-                if (w >= 4.0) baseD = 0.019; else if (w >= 3.0) baseD = 0.014; else if (w >= 2.0) baseD = 0.01;
-                
-                let weight = (diff / 0.5) * baseD * (t / 1.5) * (material === 'platinum' ? 1.3 : 1.0);
-                if (weight < 0) weight = 0;
-                const finalW = weight * buffer;
-                const cost = Math.round(finalW * activePrice) + lF;
-                const quote = Math.round(cost / (1 - targetMargin/100));
+                const w = Number(width) || 0;
+                const t = Number(thickness) || 0;
+                const cS = Number(currentSize) || 0;
+                const tS = Number(targetSize) || 0;
+                const lF = Number(laborFee) || 0;
+                const margin = Number(targetMargin) || 25;
 
-                return { diff, finalW: finalW.toFixed(4), cost, quote, profit: quote - cost, margin: quote > 0 ? ((quote - cost) / quote * 100).toFixed(1) : 0, bufferText: material === 'platinum' ? '20%' : '15%' };
-            }, [goldPrice, platinumPrice, material, width, thickness, currentSize, targetSize, targetMargin]);
+                const diff = Number((tS - cS).toFixed(2));
+                const steps = diff / 0.5;
+                
+                let baseD = WIDTH_DATA_MAP[0].d;
+                if (w >= 4.0) baseD = 0.019;
+                else if (w > 2.0) {
+                    for(let i=0; i<WIDTH_DATA_MAP.length-1; i++) {
+                        const p1 = WIDTH_DATA_MAP[i], p2 = WIDTH_DATA_MAP[i+1];
+                        if (w >= p1.w && w <= p2.w) {
+                            baseD = p1.d + (p2.d - p1.d) * (w - p1.w) / (p2.w - p1.w);
+                            break;
+                        }
+                    }
+                }
+                
+                let adjustedD = baseD * (t / 1.5) * (material === 'platinum' ? 1.3 : 1.0);
+                const weight = steps > 0 ? steps * adjustedD : 0;
+                const buffer = material === 'platinum' ? 1.20 : 1.15;
+                const finalWeight = weight * buffer;
+                const cost = Math.round(finalWeight * activePrice) + lF;
+                const quote = margin < 100 ? Math.round(cost / (1 - margin/100)) : cost;
+
+                return {
+                    diff,
+                    finalWeight: finalWeight.toFixed(4),
+                    materialCost: Math.round(finalWeight * activePrice),
+                    totalCost: cost,
+                    profit: quote - cost,
+                    margin: quote > 0 ? ((quote - cost) / quote * 100).toFixed(1) : 0,
+                    quote,
+                    bufferText: material === 'platinum' ? '20%' : '15%'
+                };
+            }, [goldPrice, platinumPrice, material, width, thickness, currentSize, targetSize, laborFee, targetMargin]);
 
             return (
-                <div className="flex-1 flex flex-col bg-white h-screen overflow-hidden">
+                <div className="flex-1 flex flex-col font-sans bg-white h-screen overflow-hidden">
                     {showPatternLock && <PatternLock onVerify={() => { setIsAdmin(true); setShowPatternLock(false); }} onClose={() => setShowPatternLock(false)} />}
+                    
+                    {/* Header */}
                     <div className="safe-top shadow-lg z-20" style={{ backgroundColor: BRAND.MAJOR }}>
                         <div className="px-5 py-4 flex justify-between items-center text-white">
-                            <div className="flex items-center gap-3">{BadgeDollarSign && <BadgeDollarSign size={24} style={{ color: BRAND.SECONDARY }} />}<h1 className="text-xl font-bold tracking-[0.1em] uppercase">戒指改圍報價</h1></div>
-                            <button onClick={() => isAdmin ? setIsAdmin(false) : setShowPatternLock(true)} className="p-2.5 rounded-full active:scale-95 transition-all" style={isAdmin ? { backgroundColor: BRAND.SECONDARY, color: BRAND.MAJOR } : { backgroundColor: 'rgba(255,255,255,0.1)' }}>{isAdmin ? (Unlock ? <Unlock size={20} /> : '🔓') : (Lock ? <Lock size={20} /> : '🔒')}</button>
+                            <div className="flex items-center gap-3">
+                                {BadgeDollarSign && <BadgeDollarSign size={24} style={{ color: BRAND.SECONDARY }} />}
+                                <h1 className="text-xl font-bold tracking-[0.1em] uppercase">戒指改圍報價</h1>
+                            </div>
+                            <button onClick={() => isAdmin ? setIsAdmin(false) : setShowPatternLock(true)} 
+                                className="p-2.5 rounded-full active:scale-95 transition-all"
+                                style={isAdmin ? { backgroundColor: BRAND.SECONDARY, color: BRAND.MAJOR } : { backgroundColor: 'rgba(255,255,255,0.1)' }}>
+                                {isAdmin ? (Unlock ? <Unlock size={20} /> : '🔓') : (Lock ? <Lock size={20} /> : '🔒')}
+                            </button>
                         </div>
                     </div>
 
+                    {/* Scrollable Content */}
                     <div className="scroll-content p-5 space-y-4 flex flex-col">
                         <div className="flex p-1 bg-gray-100 rounded-xl">
-                            <button onClick={() => setMaterial('gold')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-lg transition-all ${material === 'gold' ? 'bg-white shadow-sm text-amber-700' : 'text-gray-400'}`}>{Coins && <Coins size={16} />} 18K金</button>
-                            <button onClick={() => setMaterial('platinum')} className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-lg transition-all ${material === 'platinum' ? 'bg-white shadow-sm text-slate-700' : 'text-gray-400'}`}>{Gem && <Gem size={16} />} 鉑金</button>
+                            <button onClick={() => {setMaterial('gold'); setLaborFee(1000);}}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-lg transition-all ${material === 'gold' ? 'bg-white shadow-sm text-amber-700' : 'text-gray-400'}`}>
+                                {Coins && <Coins size={16} />} 18K金
+                            </button>
+                            <button onClick={() => {setMaterial('platinum'); setLaborFee(1500);}}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold rounded-lg transition-all ${material === 'platinum' ? 'bg-white shadow-sm text-slate-700' : 'text-gray-400'}`}>
+                                {Gem && <Gem size={16} />} 鉑金
+                            </button>
                         </div>
 
                         <div className="relative">
                             <div className="flex justify-between items-center absolute left-3 top-1.5 w-[calc(100%-24px)] z-10">
-                                <label className="text-[10px] font-black uppercase tracking-wider" style={{ color: BRAND.SECONDARY }}>今日價格 (TWD/錢)</label>
-                                <button onClick={fetchRealTimePrices} disabled={isFetching}>{isFetching ? <Loader2 size={12} className="animate-spin text-amber-600" /> : <RefreshCw size={12} className="text-amber-600 opacity-60" />}</button>
+                                <label className="text-xs font-black uppercase tracking-wide" style={{ color: BRAND.SECONDARY }}>今日價格 (TWD/錢)</label>
+                                <button onClick={fetchRealTimePrices} disabled={isFetching}>
+                                    {isFetching ? (Loader2 && <Loader2 size={12} className="animate-spin text-amber-600" />) : (RefreshCw && <RefreshCw size={12} className="text-amber-600 opacity-60" />)}
+                                </button>
                             </div>
                             <div className="flex items-center rounded-2xl border-2 pr-4 bg-[#EDEDED] border-[#EDEDED] focus-within:border-[#D5B98E]">
-                                <input type="number" value={material === 'gold' ? goldPrice : platinumPrice} onChange={(e) => material === 'gold' ? setGoldPrice(e.target.value) : setPlatinumPrice(e.target.value)} className="w-full pl-3 pt-5 pb-1.5 bg-transparent text-2xl font-bold text-[#1E0E0A]" />
-                                <span className="text-xs font-bold opacity-30">TWD</span>
+                                <input type="number" value={material === 'gold' ? goldPrice : platinumPrice} 
+                                    onChange={(e) => material === 'gold' ? setGoldPrice(e.target.value) : setPlatinumPrice(e.target.value)}
+                                    className="w-full pl-3 pt-5 pb-1.5 bg-transparent outline-none text-2xl font-bold" style={{ color: BRAND.MAJOR }} />
+                                <span className="text-xs font-black opacity-40">TWD</span>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
-                            <div className="border-b-2 p-1"><label className="text-[10px] opacity-40 block font-bold">寬度 (mm)</label><input type="number" value={width} onChange={(e)=>setWidth(e.target.value)} className="w-full font-bold text-lg" /></div>
-                            <div className="border-b-2 p-1"><label className="text-[10px] opacity-40 block font-bold">厚度 (mm)</label><input type="number" value={thickness} onChange={(e)=>setThickness(e.target.value)} className="w-full font-bold text-lg" /></div>
-                            <div className="border-b-2 p-1"><label className="text-[10px] opacity-40 block font-bold">原手圍 (號)</label><input type="number" value={currentSize} onChange={(e)=>setCurrentSize(e.target.value)} className="w-full" /></div>
-                            <div className="border-b-2 p-1 border-amber-300"><label className="text-[10px] text-amber-600 block font-bold">目標手圍 (號)</label><input type="number" value={targetSize} onChange={(e)=>setTargetSize(e.target.value)} className="w-full font-bold text-2xl text-amber-700" /></div>
+                            <div className="relative">
+                                <label className="absolute left-3 top-1 text-xs font-bold opacity-60">寬度 (mm)</label>
+                                <input type="number" step="0.1" value={width} onChange={(e) => setWidth(e.target.value)} placeholder="0.0"
+                                    className="w-full pl-3 pt-5 pb-1 border-b-2 bg-transparent outline-none font-bold border-[#EDEDED] focus:border-[#D5B98E]" />
+                            </div>
+                            <div className="relative">
+                                <label className="absolute left-3 top-1 text-xs font-bold opacity-60">厚度 (mm)</label>
+                                <input type="number" step="0.1" value={thickness} onChange={(e) => setThickness(e.target.value)} placeholder="0.0"
+                                    className="w-full pl-3 pt-5 pb-1 border-b-2 bg-transparent outline-none font-bold border-[#EDEDED] focus:border-[#D5B98E]" />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
+                            <div className="relative">
+                                <label className="absolute left-3 top-1 text-xs font-bold opacity-40">原手圍 (號)</label>
+                                <input type="number" step="0.5" value={currentSize} onChange={(e) => setCurrentSize(e.target.value)}
+                                    className="w-full pl-3 pt-5 pb-1 border-b-2 bg-transparent outline-none" />
+                            </div>
+                            <div className="relative">
+                                <label className="absolute left-3 top-1 text-xs font-bold" style={{ color: BRAND.SECONDARY }}>目標手圍 (號)</label>
+                                <input type="number" step="0.5" value={targetSize} onChange={(e) => setTargetSize(e.target.value)}
+                                    className="w-full pl-3 pt-5 pb-1 border-b-2 bg-transparent outline-none font-black text-lg border-[#D5B98E]" />
+                            </div>
                         </div>
 
                         {isAdmin && (
-                            <div className="p-4 bg-gray-50 rounded-2xl border-l-4 border-amber-400 space-y-3 text-xs shadow-sm">
-                                <div className="flex justify-between items-center border-b border-gray-200 pb-1.5"><span className="font-black flex items-center gap-1 uppercase">{Settings2 && <Settings2 size={14} />} 內部分析</span><span className="opacity-50 font-bold">耗損緩衝 {calc.bufferText}</span></div>
-                                <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                                    <div className="flex justify-between"><span>毛利 %:</span><input type="number" value={targetMargin} onChange={(e)=>setTargetMargin(e.target.value)} className="w-8 text-right font-black" /></div>
-                                    <div className="flex justify-between"><span>預估重:</span><span className="font-black">{calc.finalW} 錢</span></div>
-                                    <div className="flex justify-between pt-2 border-t border-gray-200 col-span-2 font-black text-amber-900"><span>預計利潤:</span><span>${calc.profit.toLocaleString()}</span></div>
+                            <div className="px-4 py-3 rounded-2xl border-l-4 space-y-3 bg-[#EDEDED] border-[#D5B98E]">
+                                <div className="flex justify-between items-center border-b border-gray-200 pb-1.5">
+                                    <span className="text-xs font-black flex items-center gap-1">{Settings2 && <Settings2 size={14} style={{ color: BRAND.SECONDARY }} />} 內部分析</span>
+                                    <span className="text-[10px] font-bold opacity-70">耗損緩衝 {calculation.bufferText}</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                                    <div className="flex justify-between"><span className="opacity-70">毛利:</span><span className="font-bold"><input type="number" value={targetMargin} onChange={(e) => setTargetMargin(e.target.value)} className="bg-transparent w-8 text-right" />%</span></div>
+                                    <div className="flex justify-between"><span className="opacity-70">預估重:</span><span className="font-bold">{calculation.finalWeight} 錢</span></div>
+                                    <div className="flex justify-between"><span className="opacity-70">總成本:</span><span className="font-bold">${calculation.totalCost.toLocaleString()}</span></div>
+                                    <div className="flex justify-between pt-2 border-t border-gray-200 col-span-2 font-black">
+                                        <span>預計利潤 ({calculation.margin}%)</span>
+                                        <span>${calculation.profit.toLocaleString()}</span>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
-                        <div className="mt-auto p-8 rounded-[40px] shadow-2xl text-center relative overflow-hidden" style={{ backgroundColor: BRAND.SECONDARY }}>
-                            <div className="absolute top-4 left-6 px-4 py-1.5 bg-black/10 rounded-full text-[10px] text-white font-black uppercase tracking-widest">{calc.diff > 0 ? `放大 ${Math.abs(calc.diff)} 號` : calc.diff < 0 ? `縮小 ${Math.abs(calc.diff)} 號` : '不變'}</div>
-                            <div className="text-[11px] font-black tracking-[0.4em] text-white/60 mb-3 uppercase">建議對客報價</div>
-                            <div className="flex items-baseline justify-center gap-2"><span className="text-3xl font-bold text-white/40 italic">$</span><span className="text-7xl font-black tracking-tighter text-gray-900">{calc.quote.toLocaleString()}</span></div>
+                        {/* Result Card */}
+                        <div className="relative rounded-3xl p-6 shadow-xl flex flex-col justify-center min-h-[160px] border border-amber-200 mt-auto" style={{ backgroundColor: BRAND.SECONDARY }}>
+                            <div className="absolute top-4 left-5">
+                                <div className="px-4 py-1.5 rounded-full text-xs font-black shadow-md flex gap-1.5" style={{ backgroundColor: BRAND.MAJOR, color: 'white' }}>
+                                    <span>{calculation.diff > 0 ? `放大 ${Math.abs(calculation.diff)} 號` : calculation.diff < 0 ? `縮小 ${Math.abs(calculation.diff)} 號` : '手圍不變'}</span>
+                                    <span className="opacity-50">|</span>
+                                    <span>{material === 'gold' ? '18K' : 'PT'}</span>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-center pt-6 text-center">
+                                <span className="text-xs font-black tracking-[0.4em] mb-2 opacity-60">建議對客報價</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-3xl font-black italic opacity-60">$</span>
+                                    <span className="text-6xl font-black tracking-tighter">{calculation.quote.toLocaleString()}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div className="safe-bottom text-[9px] text-center text-gray-400 py-4 font-black tracking-[0.3em] uppercase">{TrendingUp && <TrendingUp size={12} className="inline mr-1" />} 品牌專業報價服務</div>
+
+                        {/* Footer */}
+                        <div className="safe-bottom flex items-center justify-end text-[11px] py-2 font-bold text-gray-500">
+                            {TrendingUp && <TrendingUp size={14} style={{ color: BRAND.SECONDARY }} className="mr-1"/>} 品牌專業報價服務
+                        </div>
                     </div>
                 </div>
             );
