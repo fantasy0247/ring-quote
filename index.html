@@ -3,32 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>戒指報價系統</title>
+    <title>戒指改圍報價系統</title>
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="戒指報價">
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.21.4/babel.min.js"></script>
-    
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
+
     <style>
-        body { -webkit-tap-highlight-color: transparent; user-select: none; background-color: #1E0E0A; margin: 0; padding: 0; font-family: -apple-system, sans-serif; overflow: hidden; }
+        body {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+            background-color: #1E0E0A;
+            margin: 0; padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
+        }
         .safe-top { padding-top: env(safe-area-inset-top); }
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-        #root { height: 100vh; display: flex; flex-direction: column; background: #fff; }
-        .loading-screen { display: flex; justify-content: center; align-items: center; height: 100vh; color: #D5B98E; background-color: #1E0E0A; font-weight: bold; }
-        input { border: none; background: transparent; outline: none; }
+        #root { height: 100vh; display: flex; flex-direction: column; background-color: #fff; }
+        .scroll-content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        input[type="number"] { -moz-appearance: textfield; border: none; background: transparent; outline: none; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .loading-screen { display: flex; justify-content: center; align-items: center; height: 100vh; color: #D5B98E; font-weight: bold; background-color: #1E0E0A; }
     </style>
 </head>
 <body>
-    <div id="root"><div class="loading-screen">系統啟動中...</div></div>
+    <div id="root"><div class="loading-screen">高級報價系統載入中...</div></div>
 
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
+        // 修正 Lucide 圖標在 UMD 環境下的抓取
+        const Lucide = window.LucideReact || {};
+        const { 
+            BadgeDollarSign, Unlock, Lock, Coins, Gem, 
+            RefreshCw, Loader2, Settings2, ShieldCheck, 
+            TrendingUp, X 
+        } = Lucide;
+
+        const BRAND = { MAJOR: '#1E0E0A', SECONDARY: '#D5B98E', AUXILIARY: '#EDEDED' };
+
+        // --- 圖形解鎖組件 ---
+        const PatternLock = ({ onVerify, onClose }) => {
+            const [nodes, setNodes] = useState([]);
+            const [isDrawing, setIsDrawing] = useState(false);
+            const [error, setError] = useState(false);
+            const CORRECT_PATTERN = [0, 1, 2, 4, 6, 7, 8];
+
+            const handleEnd = () => {
+                setIsDrawing(false);
+                if (JSON.stringify(nodes) === JSON.stringify(CORRECT_PATTERN)) { onVerify(); } 
+                else if (nodes.length > 0) { 
+                    setError(true); 
+                    setTimeout(() => { setNodes([]); setError(false); }, 800); 
+                }
+            };
+
+            const handleTouchMove = (e) => {
+                if (!isDrawing) return;
+                const touch = e.touches[0];
+                const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (element && element.dataset.index !== undefined) {
+                    const index = parseInt(element.dataset.index);
+                    if (!nodes.includes(index)) setNodes(prev => [...prev, index]);
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="rounded-3xl w-full max-w-[300px] p-6 relative shadow-2xl" style={{ backgroundColor: BRAND.SECONDARY }}>
+                        <button onClick={onClose} className="absolute right-4 top-4 text-white">{X ? <X size={24} /> : '✕'}</button>
+                        <div className="text-center mb-8 text-white font-bold tracking-widest">管理員驗證 <p className="text-[10px] opacity-70 mt-1 font-normal uppercase">Security Pattern</p></div>
+                        <div className="relative grid grid-cols-3 gap-8 mx-auto w-fit mb-8 touch-none" onTouchEnd={handleEnd} onTouchMove={handleTouchMove}>
+                            <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible">
+                                {nodes.map((node, i) => {
+                                    if (i === 0) return null;
+                                    const prev = nodes[i - 1];
+                                    return <line key={i} x1={(prev%3)*72+20} y1={Math.floor(prev/3)*72+20} x2={(node%3)*72+20} y2={Math.floor(node/3)*72+20} stroke={error ? "#ef4444" : "white"} strokeWidth="5" strokeLinecap="round" />;
+                                })}
+                            </svg>
+                            {[...Array(9)].map((_, i) => (
+                                <div key={i} data-index={i} onTouchStart={(e) => { e.preventDefault(); setIsDrawing(true); setNodes([i]); }}
+                                     className={`w-10 h-10 rounded-full border-2 transition-all ${nodes.includes(i) ? (error ? 'bg-red-500 border-red-500' : 'bg-white border-white scale-110 shadow-lg') : 'bg-white/20 border-white/30'}`} />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
         const App = () => {
             const [isAdmin, setIsAdmin] = useState(false);
+            const [showLock, setShowLock] = useState(false);
             const [material, setMaterial] = useState('gold');
             const [goldPrice, setGoldPrice] = useState(18500);
             const [platinumPrice, setPlatinumPrice] = useState(13500);
@@ -56,52 +129,76 @@
                 const cost = Math.round(finalW * p) + Number(laborFee);
                 const quote = Math.round(cost / (1 - targetMargin/100));
 
-                return { diff: diff.toFixed(1), finalW: finalW.toFixed(4), cost, quote };
+                return { diff: diff.toFixed(1), finalW: finalW.toFixed(4), cost, quote, profit: quote - cost };
             }, [goldPrice, platinumPrice, material, width, thickness, currentSize, targetSize, laborFee, targetMargin]);
 
             return (
                 <div className="flex-1 flex flex-col bg-white">
-                    <div className="safe-top" style={{ backgroundColor: '#1E0E0A' }}>
-                        <div className="px-5 py-4 flex justify-between items-center text-white">
-                            <div className="font-bold tracking-widest">戒指改圍報價系統</div>
-                            <div onClick={() => setIsAdmin(!isAdmin)} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                                {isAdmin ? '🔓' : '🔒'}
+                    {showLock && <PatternLock onVerify={() => {setIsAdmin(true); setShowLock(false);}} onClose={() => setShowLock(false)} />}
+                    
+                    <div className="safe-top shadow-2xl z-20" style={{ backgroundColor: BRAND.MAJOR }}>
+                        <div className="px-6 py-5 flex justify-between items-center text-white">
+                            <div className="flex items-center gap-3 font-bold tracking-[0.2em]">
+                                {BadgeDollarSign && <BadgeDollarSign size={22} style={{ color: BRAND.SECONDARY }} />}
+                                <span className="text-lg">戒指改圍報價</span>
                             </div>
+                            <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLock(true)} className="p-2.5 rounded-full bg-white/10 active:scale-90 transition-transform">
+                                {isAdmin ? (Unlock ? <Unlock size={20} /> : '🔓') : (Lock ? <Lock size={20} /> : '🔒')}
+                            </button>
                         </div>
                     </div>
 
-                    <div className="flex-1 p-5 space-y-4 overflow-y-auto">
-                        <div className="flex p-1 bg-gray-100 rounded-xl">
-                            <button onClick={() => {setMaterial('gold'); setLaborFee(1000);}} className={`flex-1 py-2 rounded-lg text-sm font-bold ${material === 'gold' ? 'bg-white shadow text-amber-700' : 'text-gray-400'}`}>18K金</button>
-                            <button onClick={() => {setMaterial('platinum'); setLaborFee(1500);}} className={`flex-1 py-2 rounded-lg text-sm font-bold ${material === 'platinum' ? 'bg-white shadow text-slate-700' : 'text-gray-400'}`}>鉑金</button>
+                    <div className="scroll-content p-6 space-y-6 flex flex-col">
+                        <div className="flex p-1.5 bg-gray-100 rounded-2xl shadow-inner">
+                            <button onClick={() => {setMaterial('gold'); setLaborFee(1000);}} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${material === 'gold' ? 'bg-white shadow-md text-amber-700 scale-[1.02]' : 'text-gray-400'}`}>18K 金</button>
+                            <button onClick={() => {setMaterial('platinum'); setLaborFee(1500);}} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${material === 'platinum' ? 'bg-white shadow-md text-slate-700 scale-[1.02]' : 'text-gray-400'}`}>鉑金 PT</button>
                         </div>
 
-                        <div className="bg-gray-100 p-4 rounded-2xl">
-                            <label className="text-[10px] font-bold text-amber-700 block mb-1">今日金價 (TWD/錢)</label>
-                            <input type="number" value={material === 'gold' ? goldPrice : platinumPrice} onChange={(e) => material === 'gold' ? setGoldPrice(e.target.value) : setPlatinumPrice(e.target.value)} className="w-full text-2xl font-bold text-gray-800" />
+                        <div className="bg-[#EDEDED] p-5 rounded-3xl relative shadow-sm border border-gray-200">
+                            <label className="text-[10px] font-black text-amber-800 block mb-2 uppercase tracking-widest opacity-70">今日公會價格 (TWD/錢)</label>
+                            <div className="flex items-center">
+                                <input type="number" value={material === 'gold' ? goldPrice : platinumPrice} onChange={(e) => material === 'gold' ? setGoldPrice(e.target.value) : setPlatinumPrice(e.target.value)} className="w-full text-3xl font-black" style={{ color: BRAND.MAJOR }} />
+                                <span className="text-xs font-bold opacity-30">TWD</span>
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="border-b-2 p-1"><label className="text-[10px] opacity-50 block font-bold">寬度 (mm)</label><input type="number" value={width} onChange={(e)=>setWidth(e.target.value)} className="w-full font-bold" /></div>
-                            <div className="border-b-2 p-1"><label className="text-[10px] opacity-50 block font-bold">厚度 (mm)</label><input type="number" value={thickness} onChange={(e)=>setThickness(e.target.value)} className="w-full font-bold" /></div>
-                            <div className="border-b-2 p-1"><label className="text-[10px] opacity-50 block font-bold">原手圍</label><input type="number" value={currentSize} onChange={(e)=>setCurrentSize(e.target.value)} className="w-full" /></div>
-                            <div className="border-b-2 p-1 border-amber-300"><label className="text-[10px] text-amber-600 block font-bold">目標手圍</label><input type="number" value={targetSize} onChange={(e)=>setTargetSize(e.target.value)} className="w-full font-bold text-lg" /></div>
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-6">
+                            <div className="border-b-2 border-gray-100 p-1 focus-within:border-[#D5B98E] transition-colors"><label className="text-[10px] opacity-40 block font-black uppercase">寬度 (mm)</label><input type="number" value={width} onChange={(e)=>setWidth(e.target.value)} className="w-full font-bold text-lg" /></div>
+                            <div className="border-b-2 border-gray-100 p-1 focus-within:border-[#D5B98E] transition-colors"><label className="text-[10px] opacity-40 block font-black uppercase">厚度 (mm)</label><input type="number" value={thickness} onChange={(e)=>setThickness(e.target.value)} className="w-full font-bold text-lg" /></div>
+                            <div className="border-b-2 border-gray-100 p-1"><label className="text-[10px] opacity-40 block font-black uppercase">原手圍 (號)</label><input type="number" value={currentSize} onChange={(e)=>setCurrentSize(e.target.value)} className="w-full text-lg font-medium" /></div>
+                            <div className="border-b-2 border-amber-200 p-1"><label className="text-[10px] text-amber-600 block font-black uppercase">目標手圍 (號)</label><input type="number" value={targetSize} onChange={(e)=>setTargetSize(e.target.value)} className="w-full font-black text-2xl text-amber-700" /></div>
                         </div>
 
                         {isAdmin && (
-                            <div className="p-4 bg-amber-50 rounded-2xl border-l-4 border-amber-400 space-y-1 text-xs">
-                                <div className="flex justify-between"><span>毛利設定 %:</span><input type="number" value={targetMargin} onChange={(e)=>setTargetMargin(e.target.value)} className="w-10 text-right font-bold" /></div>
-                                <div className="flex justify-between"><span>預估重量:</span><span className="font-bold">{calc.finalW} 錢</span></div>
-                                <div className="flex justify-between border-t pt-1 font-bold text-amber-800"><span>總成本:</span><span>${calc.cost.toLocaleString()}</span></div>
+                            <div className="p-5 bg-gray-50 rounded-3xl border-l-4 border-amber-400 space-y-3 text-xs shadow-sm animate-in fade-in slide-in-from-top-2">
+                                <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+                                    <span className="font-black flex items-center gap-1 uppercase tracking-tighter">{Settings2 && <Settings2 size={14} />} 內部利潤分析</span>
+                                    <span className="opacity-50 font-bold">BUFFER 15-20%</span>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="flex justify-between"><span>毛利設定 %:</span><input type="number" value={targetMargin} onChange={(e)=>setTargetMargin(e.target.value)} className="w-8 text-right font-black border-b border-gray-300" /></div>
+                                    <div className="flex justify-between"><span>預估重量:</span><span className="font-black">{calc.finalW} 錢</span></div>
+                                    <div className="flex justify-between pt-2 border-t border-gray-200 col-span-2 font-black text-sm text-amber-900">
+                                        <span className="flex items-center gap-1">{ShieldCheck && <ShieldCheck size={14} />} 預計利潤:</span>
+                                        <span>${(calc.quote - calc.cost).toLocaleString()}</span>
+                                    </div>
+                                </div>
                             </div>
                         )}
 
-                        <div className="mt-auto p-8 rounded-3xl shadow-xl text-center relative overflow-hidden" style={{ backgroundColor: '#D5B98E' }}>
-                            <div className="absolute top-3 left-3 px-3 py-1 bg-black/10 rounded-full text-[10px] font-bold">{calc.diff > 0 ? `+${calc.diff} 號` : `${calc.diff} 號`}</div>
-                            <div className="text-[11px] font-black tracking-[0.3em] opacity-60 mb-2 uppercase">建議報價</div>
-                            <div className="flex items-baseline justify-center gap-1"><span className="text-2xl font-bold opacity-60">$</span><span className="text-6xl font-black tracking-tighter text-gray-900">{calc.quote.toLocaleString()}</span></div>
+                        <div className="mt-auto p-8 rounded-[40px] shadow-2xl text-center relative overflow-hidden border border-white/20" style={{ backgroundColor: BRAND.SECONDARY }}>
+                            <div className="absolute top-4 left-6 px-4 py-1.5 bg-black/10 rounded-full text-[10px] text-white font-black uppercase tracking-widest">
+                                {calc.diff > 0 ? `放大 ${Math.abs(calc.diff)} 號` : calc.diff < 0 ? `縮小 ${Math.abs(calc.diff)} 號` : '手圍不變'}
+                            </div>
+                            <div className="text-[11px] font-black tracking-[0.5em] text-white/60 mb-3 uppercase">建議對客報價</div>
+                            <div className="flex items-baseline justify-center gap-2">
+                                <span className="text-3xl font-bold text-white/40 italic">$</span>
+                                <span className="text-7xl font-black tracking-tighter text-gray-900 drop-shadow-sm">{calc.quote.toLocaleString()}</span>
+                            </div>
                         </div>
-                        <div className="safe-bottom text-[9px] text-center text-gray-400 py-3 tracking-widest font-bold">品牌專業報價服務</div>
+                        <div className="safe-bottom text-[9px] text-center text-gray-400 py-4 font-black tracking-[0.3em] uppercase flex items-center justify-center gap-2">
+                            {TrendingUp && <TrendingUp size={12} />} 品牌專業報價系統服務
+                        </div>
                     </div>
                 </div>
             );
