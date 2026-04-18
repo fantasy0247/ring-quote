@@ -170,4 +170,36 @@
 
                         <div className="bg-[#EDEDED] p-4 rounded-2xl relative">
                             <div className="flex justify-between text-[10px] font-bold text-amber-600 mb-1">今日金價 (TWD/錢) <button onClick={fetchPrice}>{isFetching ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}</button></div>
-                            <input type="number"
+                            <input type="number" value={material === 'gold' ? goldPrice : platinumPrice} onChange={(e) => material === 'gold' ? setGoldPrice(e.target.value) : setPlatinumPrice(e.target.value)} className="w-full bg-transparent text-2xl font-bold outline-none" style={{ color: BRAND.MAJOR }} />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="border-b-2 p-1"><label className="text-[10px] opacity-50 block">寬度 (mm)</label><input type="number" value={width} onChange={(e)=>setWidth(e.target.value)} className="w-full bg-transparent font-bold outline-none" /></div>
+                            <div className="border-b-2 p-1"><label className="text-[10px] opacity-50 block">厚度 (mm)</label><input type="number" value={thickness} onChange={(e)=>setThickness(e.target.value)} className="w-full bg-transparent font-bold outline-none" /></div>
+                            <div className="border-b-2 p-1"><label className="text-[10px] opacity-50 block">原手圍</label><input type="number" value={currentSize} onChange={(e)=>setCurrentSize(e.target.value)} className="w-full bg-transparent outline-none" /></div>
+                            <div className="border-b-2 p-1 border-amber-300"><label className="text-[10px] text-amber-600 block">目標手圍</label><input type="number" value={targetSize} onChange={(e)=>setTargetSize(e.target.value)} className="w-full bg-transparent font-bold text-lg outline-none" /></div>
+                        </div>
+
+                        {isAdmin && (
+                            <div className="p-4 bg-gray-50 rounded-2xl border-l-4 border-amber-400 space-y-2 text-xs">
+                                <div className="flex justify-between"><span>毛利設定 %:</span><input type="number" value={targetMargin} onChange={(e)=>setTargetMargin(e.target.value)} className="w-10 bg-transparent text-right font-bold" /></div>
+                                <div className="flex justify-between"><span>預估重量:</span><span className="font-bold">{calc.finalW} 錢</span></div>
+                                <div className="flex justify-between"><span>總成本:</span><span className="font-bold">${calc.cost.toLocaleString()}</span></div>
+                                <div className="flex justify-between text-amber-700 font-bold border-t pt-1"><span>預計利潤:</span><span>${calc.profit.toLocaleString()}</span></div>
+                            </div>
+                        )}
+
+                        <div className="mt-auto p-6 rounded-3xl shadow-xl text-center relative overflow-hidden" style={{ backgroundColor: BRAND.SECONDARY }}>
+                            <div className="absolute top-2 left-2 px-2 py-0.5 bg-black/20 rounded text-[10px] text-white font-bold">{calc.diff > 0 ? `+${calc.diff} 號` : `${calc.diff} 號`}</div>
+                            <div className="text-[10px] font-black tracking-[0.3em] opacity-60 mb-1">建議對客報價</div>
+                            <div className="flex items-baseline justify-center gap-1"><span className="text-xl font-bold opacity-60">$</span><span className="text-5xl font-black">{calc.quote.toLocaleString()}</span></div>
+                        </div>
+                        <div className="safe-bottom text-[9px] text-center text-gray-400 py-2"><TrendingUp size={10} className="inline mr-1" /> 品牌專業報價服務</div>
+                    </div>
+                </div>
+            );
+        };
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
