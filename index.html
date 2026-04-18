@@ -40,32 +40,23 @@
 
     <script type="text/babel">
         const { useState, useMemo, useEffect } = React;
-        // 修正 Lucide 圖標在 UMD 環境下的抓取
         const Lucide = window.LucideReact || {};
-        const { 
-            BadgeDollarSign, Unlock, Lock, Coins, Gem, 
-            RefreshCw, Loader2, Settings2, ShieldCheck, 
-            TrendingUp, X 
-        } = Lucide;
+        const { BadgeDollarSign, Unlock, Lock, Coins, Gem, Settings2, ShieldCheck, TrendingUp, X } = Lucide;
 
         const BRAND = { MAJOR: '#1E0E0A', SECONDARY: '#D5B98E', AUXILIARY: '#EDEDED' };
 
-        // --- 圖形解鎖組件 ---
         const PatternLock = ({ onVerify, onClose }) => {
             const [nodes, setNodes] = useState([]);
             const [isDrawing, setIsDrawing] = useState(false);
             const [error, setError] = useState(false);
-            const CORRECT_PATTERN = [0, 1, 2, 4, 6, 7, 8];
-
             const handleEnd = () => {
                 setIsDrawing(false);
-                if (JSON.stringify(nodes) === JSON.stringify(CORRECT_PATTERN)) { onVerify(); } 
+                if (JSON.stringify(nodes) === JSON.stringify([0, 1, 2, 4, 6, 7, 8])) { onVerify(); } 
                 else if (nodes.length > 0) { 
                     setError(true); 
                     setTimeout(() => { setNodes([]); setError(false); }, 800); 
                 }
             };
-
             const handleTouchMove = (e) => {
                 if (!isDrawing) return;
                 const touch = e.touches[0];
@@ -75,7 +66,6 @@
                     if (!nodes.includes(index)) setNodes(prev => [...prev, index]);
                 }
             };
-
             return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
                     <div className="rounded-3xl w-full max-w-[300px] p-6 relative shadow-2xl" style={{ backgroundColor: BRAND.SECONDARY }}>
@@ -117,52 +107,45 @@
                 const w = Number(width) || 0;
                 const t = Number(thickness) || 0;
                 const diff = (Number(targetSize) || 0) - (Number(currentSize) || 0);
-                
                 let baseD = 0.01;
-                if (w >= 4.0) baseD = 0.019;
-                else if (w >= 3.0) baseD = 0.014;
-                else if (w >= 2.0) baseD = 0.01;
-
+                if (w >= 4.0) baseD = 0.019; else if (w >= 3.0) baseD = 0.014; else if (w >= 2.0) baseD = 0.01;
                 let weight = (diff / 0.5) * baseD * (t / 1.5) * (material === 'platinum' ? 1.3 : 1.0);
                 if (weight < 0) weight = 0;
                 const finalW = weight * (material === 'platinum' ? 1.2 : 1.15);
                 const cost = Math.round(finalW * p) + Number(laborFee);
                 const quote = Math.round(cost / (1 - targetMargin/100));
-
                 return { diff: diff.toFixed(1), finalW: finalW.toFixed(4), cost, quote, profit: quote - cost };
             }, [goldPrice, platinumPrice, material, width, thickness, currentSize, targetSize, laborFee, targetMargin]);
 
             return (
                 <div className="flex-1 flex flex-col bg-white">
                     {showLock && <PatternLock onVerify={() => {setIsAdmin(true); setShowLock(false);}} onClose={() => setShowLock(false)} />}
-                    
                     <div className="safe-top shadow-2xl z-20" style={{ backgroundColor: BRAND.MAJOR }}>
                         <div className="px-6 py-5 flex justify-between items-center text-white">
-                            <div className="flex items-center gap-3 font-bold tracking-[0.2em]">
-                                {BadgeDollarSign && <BadgeDollarSign size={22} style={{ color: BRAND.SECONDARY }} />}
-                                <span className="text-lg">戒指改圍報價</span>
-                            </div>
-                            <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLock(true)} className="p-2.5 rounded-full bg-white/10 active:scale-90 transition-transform">
-                                {isAdmin ? (Unlock ? <Unlock size={20} /> : '🔓') : (Lock ? <Lock size={20} /> : '🔒')}
-                            </button>
+                            <div className="flex items-center gap-3 font-bold tracking-[0.2em]">{BadgeDollarSign && <BadgeDollarSign size={22} style={{ color: BRAND.SECONDARY }} />}<span className="text-lg">戒指改圍報價</span></div>
+                            <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLock(true)} className="p-2.5 rounded-full bg-white/10 active:scale-90 transition-transform">{isAdmin ? (Unlock ? <Unlock size={20} /> : '🔓') : (Lock ? <Lock size={20} /> : '🔒')}</button>
                         </div>
                     </div>
 
-                    <div className="scroll-content p-6 space-y-6 flex flex-col">
+                    <div className="scroll-content p-6 space-y-5 flex flex-col">
                         <div className="flex p-1.5 bg-gray-100 rounded-2xl shadow-inner">
                             <button onClick={() => {setMaterial('gold'); setLaborFee(1000);}} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${material === 'gold' ? 'bg-white shadow-md text-amber-700 scale-[1.02]' : 'text-gray-400'}`}>18K 金</button>
                             <button onClick={() => {setMaterial('platinum'); setLaborFee(1500);}} className={`flex-1 py-3 rounded-xl text-sm font-black transition-all ${material === 'platinum' ? 'bg-white shadow-md text-slate-700 scale-[1.02]' : 'text-gray-400'}`}>鉑金 PT</button>
                         </div>
 
-                        <div className="bg-[#EDEDED] p-5 rounded-3xl relative shadow-sm border border-gray-200">
-                            <label className="text-[10px] font-black text-amber-800 block mb-2 uppercase tracking-widest opacity-70">今日公會價格 (TWD/錢)</label>
-                            <div className="flex items-center">
-                                <input type="number" value={material === 'gold' ? goldPrice : platinumPrice} onChange={(e) => material === 'gold' ? setGoldPrice(e.target.value) : setPlatinumPrice(e.target.value)} className="w-full text-3xl font-black" style={{ color: BRAND.MAJOR }} />
-                                <span className="text-xs font-bold opacity-30">TWD</span>
+                        <div className="grid grid-cols-1 gap-4">
+                            <div className="bg-[#EDEDED] p-4 rounded-3xl border border-gray-200 shadow-sm">
+                                <label className="text-[10px] font-black text-amber-800 block mb-1 uppercase tracking-widest opacity-70">今日公會價格 (TWD/錢)</label>
+                                <div className="flex items-center"><input type="number" value={material === 'gold' ? goldPrice : platinumPrice} onChange={(e) => material === 'gold' ? setGoldPrice(e.target.value) : setPlatinumPrice(e.target.value)} className="w-full text-2xl font-black" style={{ color: BRAND.MAJOR }} /><span className="text-xs font-bold opacity-30">TWD</span></div>
+                            </div>
+                            {/* 重新加入：預估工錢成本欄位 */}
+                            <div className="bg-[#F8F8F8] p-4 rounded-3xl border border-gray-100 shadow-inner">
+                                <label className="text-[10px] font-black text-gray-500 block mb-1 uppercase tracking-widest opacity-70">預估工錢成本 (TWD)</label>
+                                <div className="flex items-center"><input type="number" value={laborFee} onChange={(e) => setLaborFee(e.target.value)} className="w-full text-xl font-black text-gray-700" /><span className="text-xs font-bold opacity-30">TWD</span></div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-6">
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-6 pt-2">
                             <div className="border-b-2 border-gray-100 p-1 focus-within:border-[#D5B98E] transition-colors"><label className="text-[10px] opacity-40 block font-black uppercase">寬度 (mm)</label><input type="number" value={width} onChange={(e)=>setWidth(e.target.value)} className="w-full font-bold text-lg" /></div>
                             <div className="border-b-2 border-gray-100 p-1 focus-within:border-[#D5B98E] transition-colors"><label className="text-[10px] opacity-40 block font-black uppercase">厚度 (mm)</label><input type="number" value={thickness} onChange={(e)=>setThickness(e.target.value)} className="w-full font-bold text-lg" /></div>
                             <div className="border-b-2 border-gray-100 p-1"><label className="text-[10px] opacity-40 block font-black uppercase">原手圍 (號)</label><input type="number" value={currentSize} onChange={(e)=>setCurrentSize(e.target.value)} className="w-full text-lg font-medium" /></div>
@@ -171,39 +154,25 @@
 
                         {isAdmin && (
                             <div className="p-5 bg-gray-50 rounded-3xl border-l-4 border-amber-400 space-y-3 text-xs shadow-sm animate-in fade-in slide-in-from-top-2">
-                                <div className="flex justify-between items-center border-b border-gray-200 pb-2">
-                                    <span className="font-black flex items-center gap-1 uppercase tracking-tighter">{Settings2 && <Settings2 size={14} />} 內部利潤分析</span>
-                                    <span className="opacity-50 font-bold">BUFFER 15-20%</span>
-                                </div>
+                                <div className="flex justify-between items-center border-b border-gray-200 pb-2"><span className="font-black flex items-center gap-1 uppercase tracking-tighter">{Settings2 && <Settings2 size={14} />} 內部利潤分析</span><span className="opacity-50 font-bold">BUFFER 15-20%</span></div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="flex justify-between"><span>毛利設定 %:</span><input type="number" value={targetMargin} onChange={(e)=>setTargetMargin(e.target.value)} className="w-8 text-right font-black border-b border-gray-300" /></div>
                                     <div className="flex justify-between"><span>預估重量:</span><span className="font-black">{calc.finalW} 錢</span></div>
-                                    <div className="flex justify-between pt-2 border-t border-gray-200 col-span-2 font-black text-sm text-amber-900">
-                                        <span className="flex items-center gap-1">{ShieldCheck && <ShieldCheck size={14} />} 預計利潤:</span>
-                                        <span>${(calc.quote - calc.cost).toLocaleString()}</span>
-                                    </div>
+                                    <div className="flex justify-between pt-2 border-t border-gray-200 col-span-2 font-black text-sm text-amber-900"><span className="flex items-center gap-1">{ShieldCheck && <ShieldCheck size={14} />} 預計利潤:</span><span>${calc.profit.toLocaleString()}</span></div>
                                 </div>
                             </div>
                         )}
 
                         <div className="mt-auto p-8 rounded-[40px] shadow-2xl text-center relative overflow-hidden border border-white/20" style={{ backgroundColor: BRAND.SECONDARY }}>
-                            <div className="absolute top-4 left-6 px-4 py-1.5 bg-black/10 rounded-full text-[10px] text-white font-black uppercase tracking-widest">
-                                {calc.diff > 0 ? `放大 ${Math.abs(calc.diff)} 號` : calc.diff < 0 ? `縮小 ${Math.abs(calc.diff)} 號` : '手圍不變'}
-                            </div>
+                            <div className="absolute top-4 left-6 px-4 py-1.5 bg-black/10 rounded-full text-[10px] text-white font-black uppercase tracking-widest">{calc.diff > 0 ? `放大 ${Math.abs(calc.diff)} 號` : calc.diff < 0 ? `縮小 ${Math.abs(calc.diff)} 號` : '手圍不變'}</div>
                             <div className="text-[11px] font-black tracking-[0.5em] text-white/60 mb-3 uppercase">建議對客報價</div>
-                            <div className="flex items-baseline justify-center gap-2">
-                                <span className="text-3xl font-bold text-white/40 italic">$</span>
-                                <span className="text-7xl font-black tracking-tighter text-gray-900 drop-shadow-sm">{calc.quote.toLocaleString()}</span>
-                            </div>
+                            <div className="flex items-baseline justify-center gap-2"><span className="text-3xl font-bold text-white/40 italic">$</span><span className="text-7xl font-black tracking-tighter text-gray-900 drop-shadow-sm">{calc.quote.toLocaleString()}</span></div>
                         </div>
-                        <div className="safe-bottom text-[9px] text-center text-gray-400 py-4 font-black tracking-[0.3em] uppercase flex items-center justify-center gap-2">
-                            {TrendingUp && <TrendingUp size={12} />} 品牌專業報價系統服務
-                        </div>
+                        <div className="safe-bottom text-[9px] text-center text-gray-400 py-4 font-black tracking-[0.3em] uppercase flex items-center justify-center gap-2">{TrendingUp && <TrendingUp size={12} />} 品牌專業報價系統服務</div>
                     </div>
                 </div>
             );
         };
-        
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
