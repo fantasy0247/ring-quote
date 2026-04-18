@@ -4,9 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>戒指改圍報價系統</title>
+    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="戒指報價">
+    <link rel="apple-touch-icon" href="icon.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -18,66 +20,154 @@
     <style>
         body {
             -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
             user-select: none;
             background-color: #1E0E0A;
-            margin: 0;
-            padding: 0;
-            overflow: hidden; 
+            margin: 0; padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            overflow: hidden;
         }
         .safe-top { padding-top: env(safe-area-inset-top); }
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
         #root { height: 100vh; display: flex; flex-direction: column; }
-        .loading-screen {
-            display: flex; justify-content: center; align-items: center;
-            height: 100vh; color: #D5B98E; font-weight: bold; background-color: #1E0E0A;
-        }
+        .scroll-content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+        input[type="number"] { -moz-appearance: textfield; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .loading-screen { display: flex; justify-content: center; align-items: center; height: 100vh; color: #D5B98E; font-weight: bold; background-color: #1E0E0A; }
     </style>
 </head>
 <body>
-    <div id="root">
-        <div class="loading-screen">系統載入中...</div>
-    </div>
+    <div id="root"><div class="loading-screen">系統初始化中...</div></div>
 
     <script type="text/babel">
-        // 確保 Lucide 圖標能正確載入
         const { useState, useMemo, useEffect } = React;
-        
-        const App = () => {
-            const [isLoaded, setIsLoaded] = useState(false);
-            const [isAdmin, setIsAdmin] = useState(false);
-            const [material, setMaterial] = useState('gold');
-            const [goldPrice, setGoldPrice] = useState(18500);
-            const [platinumPrice, setPlatinumPrice] = useState(13500);
-            
-            // 加入這個 useEffect 確保組件掛載後立即取消載入畫面
-            useEffect(() => {
-                const timer = setTimeout(() => setIsLoaded(true), 500);
-                return () => clearTimeout(timer);
-            }, []);
+        const { 
+            BadgeDollarSign, Unlock, Lock, Coins, Gem, 
+            RefreshCw, Loader2, Settings2, ShieldCheck, 
+            TrendingUp, X 
+        } = window.LucideReact || lucideReact;
 
-            if (!isLoaded) return <div className="loading-screen">初始化介面...</div>;
+        const BRAND = { MAJOR: '#1E0E0A', SECONDARY: '#D5B98E', AUXILIARY: '#EDEDED' };
+        const apiKey = ""; // 執行環境金鑰
+
+        // --- 圖形解鎖組件 ---
+        const PatternLock = ({ onVerify, onClose }) => {
+            const [nodes, setNodes] = useState([]);
+            const [isDrawing, setIsDrawing] = useState(false);
+            const [error, setError] = useState(false);
+            const CORRECT_PATTERN = [0, 1, 2, 4, 6, 7, 8];
+
+            const handleEnd = () => {
+                setIsDrawing(false);
+                if (JSON.stringify(nodes) === JSON.stringify(CORRECT_PATTERN)) { onVerify(); } 
+                else if (nodes.length > 0) { 
+                    setError(true); 
+                    setTimeout(() => { setNodes([]); setError(false); }, 800); 
+                }
+            };
+
+            const handleTouchMove = (e) => {
+                if (!isDrawing) return;
+                const touch = e.touches[0];
+                const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (element && element.dataset.index !== undefined) {
+                    const index = parseInt(element.dataset.index);
+                    if (!nodes.includes(index)) setNodes(prev => [...prev, index]);
+                }
+            };
 
             return (
-                <div className="flex-1 flex flex-col bg-white h-screen">
-                    <div className="safe-top shadow-lg" style={{ backgroundColor: '#1E0E0A' }}>
-                        <div className="px-5 py-4 text-white font-bold text-center">戒指改圍報價系統</div>
-                    </div>
-                    <div className="flex-1 p-5 space-y-6 overflow-y-auto">
-                        <div className="bg-gray-100 p-4 rounded-2xl text-center font-bold text-gray-800">
-                            🎉 介面已成功載入！
-                            <p className="text-sm font-normal mt-2">如果您看到這個畫面，代表程式運作正常。</p>
-                        </div>
-                        {/* 這裡之後可以繼續放入您原本的報價邏輯內容 */}
-                        <div className="p-10 border-2 border-dashed border-amber-200 rounded-3xl text-center text-amber-600">
-                            請確認是否已將原本的完整 App 邏輯貼入此處
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+                    <div className="rounded-2xl w-full max-w-[300px] p-6 relative" style={{ backgroundColor: BRAND.SECONDARY }}>
+                        <button onClick={onClose} className="absolute right-3 top-3 text-white"><X size={24} /></button>
+                        <div className="text-center mb-6 text-white font-bold text-sm">管理員驗證 <p className="text-[10px] opacity-70">請繪製解鎖圖形</p></div>
+                        <div className="relative grid grid-cols-3 gap-6 mx-auto w-fit mb-6 touch-none" onTouchEnd={handleEnd} onTouchMove={handleTouchMove}>
+                            <svg className="absolute inset-0 pointer-events-none w-full h-full overflow-visible">
+                                {nodes.map((node, i) => {
+                                    if (i === 0) return null;
+                                    const prev = nodes[i - 1];
+                                    return <line key={i} x1={(prev%3)*64+20} y1={Math.floor(prev/3)*64+20} x2={(node%3)*64+20} y2={Math.floor(node/3)*64+20} stroke={error ? "#ef4444" : "white"} strokeWidth="5" strokeLinecap="round" />;
+                                })}
+                            </svg>
+                            {[...Array(9)].map((_, i) => (
+                                <div key={i} data-index={i} onTouchStart={(e) => { e.preventDefault(); setIsDrawing(true); setNodes([i]); }}
+                                     className={`w-10 h-10 rounded-full border-2 transition-all ${nodes.includes(i) ? (error ? 'bg-red-500 border-red-500' : 'bg-white border-white') : 'bg-white/20 border-white/30'}`} />
+                            ))}
                         </div>
                     </div>
                 </div>
             );
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+        const App = () => {
+            const [isAdmin, setIsAdmin] = useState(false);
+            const [showLock, setShowLock] = useState(false);
+            const [material, setMaterial] = useState('gold');
+            const [goldPrice, setGoldPrice] = useState(18500);
+            const [platinumPrice, setPlatinumPrice] = useState(13500);
+            const [width, setWidth] = useState('');
+            const [thickness, setThickness] = useState('');
+            const [currentSize, setCurrentSize] = useState(10);
+            const [targetSize, setTargetSize] = useState(11);
+            const [laborFee, setLaborFee] = useState(1000);
+            const [targetMargin, setTargetMargin] = useState(25);
+            const [isFetching, setIsFetching] = useState(false);
+
+            const fetchPrice = async () => {
+                setIsFetching(true);
+                try {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: "查詢台灣今日最新銀樓公會黃金與鉑金賣出價格，回傳 JSON: { \"gold\": 數字, \"platinum\": 數字 } (TWD/錢)" }] }], generationConfig: { responseMimeType: "application/json" } })
+                    });
+                    const d = await res.json();
+                    const data = JSON.parse(d.candidates?.[0]?.content?.parts?.[0]?.text || "{}");
+                    if(data.gold) setGoldPrice(data.gold);
+                    if(data.platinum) setPlatinumPrice(data.platinum);
+                } catch (e) { console.error(e); } finally { setIsFetching(false); }
+            };
+
+            useEffect(() => { fetchPrice(); }, []);
+
+            const calc = useMemo(() => {
+                const p = material === 'gold' ? Number(goldPrice) : Number(platinumPrice);
+                const w = Number(width) || 0;
+                const t = Number(thickness) || 0;
+                const diff = (Number(targetSize) || 0) - (Number(currentSize) || 0);
+                
+                let baseD = 0.01;
+                if (w >= 4.0) baseD = 0.019;
+                else if (w >= 3.0) baseD = 0.014;
+                else if (w >= 2.0) baseD = 0.01;
+
+                let weight = (diff / 0.5) * baseD * (t / 1.5) * (material === 'platinum' ? 1.3 : 1.0);
+                if (weight < 0) weight = 0;
+                const finalW = weight * (material === 'platinum' ? 1.2 : 1.15);
+                const cost = Math.round(finalW * p) + Number(laborFee);
+                const quote = Math.round(cost / (1 - targetMargin/100));
+
+                return { diff: diff.toFixed(1), finalW: finalW.toFixed(4), cost, quote, profit: quote - cost };
+            }, [goldPrice, platinumPrice, material, width, thickness, currentSize, targetSize, laborFee, targetMargin]);
+
+            return (
+                <div className="flex-1 flex flex-col bg-white">
+                    {showLock && <PatternLock onVerify={() => {setIsAdmin(true); setShowLock(false);}} onClose={() => setShowLock(false)} />}
+                    
+                    <div className="safe-top shadow-lg" style={{ backgroundColor: BRAND.MAJOR }}>
+                        <div className="px-5 py-4 flex justify-between items-center text-white">
+                            <div className="flex items-center gap-2 font-bold tracking-widest"><BadgeDollarSign size={20} style={{ color: BRAND.SECONDARY }} /> 戒指改圍報價</div>
+                            <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLock(true)} className="p-2 rounded-full bg-white/10">
+                                {isAdmin ? <Unlock size={18} /> : <Lock size={18} />}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="scroll-content p-5 space-y-4 flex flex-col">
+                        <div className="flex p-1 bg-gray-100 rounded-xl">
+                            <button onClick={() => {setMaterial('gold'); setLaborFee(1000);}} className={`flex-1 py-2 rounded-lg text-sm font-bold ${material === 'gold' ? 'bg-white shadow text-amber-700' : 'text-gray-400'}`}>18K金</button>
+                            <button onClick={() => {setMaterial('platinum'); setLaborFee(1500);}} className={`flex-1 py-2 rounded-lg text-sm font-bold ${material === 'platinum' ? 'bg-white shadow text-slate-700' : 'text-gray-400'}`}>鉑金</button>
+                        </div>
+
+                        <div className="bg-[#EDEDED] p-4 rounded-2xl relative">
+                            <div className="flex justify-between text-[10px] font-bold text-amber-600 mb-1">今日金價 (TWD/錢) <button onClick={fetchPrice}>{isFetching ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}</button></div>
+                            <input type="number"
