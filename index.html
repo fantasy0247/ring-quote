@@ -6,60 +6,63 @@
     <title>戒指報價系統</title>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/lucide-react@latest"></script>
     <style>
-        body { background-color: #1E0E0A; margin: 0; overflow: hidden; font-family: sans-serif; }
-        #root { height: 100vh; display: flex; flex-direction: column; background: white; }
-        .loading-screen { display: flex; justify-content: center; align-items: center; height: 100vh; color: #D5B98E; background: #1E0E0A; font-weight: bold; }
+        :root { --major: #1E0E0A; --gold: #D5B98E; }
+        body { margin: 0; background: var(--major); font-family: -apple-system, sans-serif; color: #333; overflow: hidden; }
+        .app-container { height: 100vh; display: flex; flex-direction: column; background: white; }
+        .header { background: var(--major); color: white; padding: 50px 20px 15px; text-align: center; font-weight: bold; font-size: 18px; }
+        .content { padding: 20px; flex: 1; overflow-y: auto; }
+        .input-group { margin-bottom: 20px; background: #f5f5f5; padding: 12px; border-radius: 15px; }
+        .input-group label { display: block; font-size: 12px; color: #888; margin-bottom: 5px; font-weight: bold; }
+        .input-group input { width: 100%; border: none; background: transparent; font-size: 20px; font-weight: bold; outline: none; color: var(--major); }
+        .grid { display: grid; grid-cols: 2; display: flex; gap: 10px; }
+        .grid > div { flex: 1; border-bottom: 2px solid #eee; padding: 5px; }
+        .result-card { margin-top: 30px; background: var(--gold); padding: 30px; border-radius: 25px; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+        .result-label { font-size: 12px; font-weight: bold; opacity: 0.7; letter-spacing: 2px; }
+        .result-price { font-size: 45px; font-weight: 900; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <div id="root"><div class="loading-screen">啟動中...</div></div>
-    <script type="text/babel">
-        const { useState, useMemo } = React;
-        const { BadgeDollarSign, Coins, Gem, TrendingUp } = window.LucideReact || lucideReact;
+    <div class="app-container">
+        <div class="header">戒指改圍報價系統</div>
+        <div class="content">
+            <div class="input-group">
+                <label>今日金價 (TWD/錢)</label>
+                <input type="number" id="goldPrice" value="18500" oninput="calculate()">
+            </div>
+            <div class="grid">
+                <div><label style="font-size:10px; color:#999">原手圍</label><input type="number" id="curSize" value="10" oninput="calculate()" style="width:100%; border:none; font-size:18px; font-weight:bold;"></div>
+                <div><label style="font-size:10px; color:orange">目標手圍</label><input type="number" id="tarSize" value="11" oninput="calculate()" style="width:100%; border:none; font-size:18px; font-weight:bold; color:orange;"></div>
+            </div>
+            <div class="result-card">
+                <div class="result-label">建議報價</div>
+                <div class="result-price" id="totalPrice">$0</div>
+            </div>
+            <p style="text-align:center; font-size:10px; color:#ccc; margin-top:20px;">此版本為穩定連線版 (Native JS)</p>
+        </div>
+    </div>
 
-        const App = () => {
-            const [material, setMaterial] = useState('gold');
-            const [goldPrice, setGoldPrice] = useState(18500);
-            const [width, setWidth] = useState('3.0');
-            const [currentSize, setCurrentSize] = useState(10);
-            const [targetSize, setTargetSize] = useState(11);
-
-            const quote = useMemo(() => {
-                const diff = (Number(targetSize) - Number(currentSize));
-                if (diff <= 0) return 1000;
-                return Math.round(diff * (Number(goldPrice) * 0.014) + 1000);
-            }, [goldPrice, currentSize, targetSize]);
-
-            return (
-                <div className="flex-1 flex flex-col">
-                    <div className="p-5 text-white flex justify-between items-center" style={{backgroundColor:'#1E0E0A'}}>
-                        <span className="font-bold flex items-center gap-2"><BadgeDollarSign size={20} color="#D5B98E"/> 戒指改圍報價</span>
-                    </div>
-                    <div className="p-6 space-y-6">
-                        <div className="bg-gray-100 p-4 rounded-2xl">
-                            <label className="text-xs text-amber-700 font-bold block mb-1">今日金價 (TWD/錢)</label>
-                            <input type="number" value={goldPrice} onChange={(e)=>setGoldPrice(e.target.value)} className="w-full bg-transparent text-2xl font-bold outline-none" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="border-b-2 p-1"><label className="text-xs opacity-50 block">原手圍</label><input type="number" value={currentSize} onChange={(e)=>setCurrentSize(e.target.value)} className="w-full outline-none font-bold" /></div>
-                            <div className="border-b-2 p-1 border-amber-300"><label className="text-xs text-amber-600 block">目標手圍</label><input type="number" value={targetSize} onChange={(e)=>setTargetSize(e.target.value)} className="w-full outline-none font-bold text-lg" /></div>
-                        </div>
-                        <div className="mt-10 p-8 rounded-3xl text-center shadow-2xl" style={{backgroundColor:'#D5B98E'}}>
-                            <div className="text-xs font-bold opacity-60 mb-2">建議報價</div>
-                            <div className="text-5xl font-black">${quote.toLocaleString()}</div>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    <script>
+        function calculate() {
+            const price = parseFloat(document.getElementById('goldPrice').value) || 0;
+            const cur = parseFloat(document.getElementById('curSize').value) || 0;
+            const tar = parseFloat(document.getElementById('tarSize').value) || 0;
+            
+            const diff = tar - cur;
+            let result = 0;
+            
+            if (diff <= 0) {
+                result = 1000; // 縮小或不變的基本工費
+            } else {
+                // 簡易公式：(號差 / 0.5) * 金料常數 * 金價 + 基本工費
+                const goldWeight = (diff / 0.5) * 0.014 * 1.15;
+                result = Math.round(goldWeight * price) + 1000;
+            }
+            
+            document.getElementById('totalPrice').innerText = '$' + result.toLocaleString();
+        }
+        // 初始執行一次
+        calculate();
     </script>
 </body>
 </html>
